@@ -4,6 +4,7 @@ import random
 from torch import nn
 from torch.autograd import Variable
 import torch.nn.functional as F
+import numpy as np
 
 
 class Encoder(nn.Module):
@@ -91,20 +92,38 @@ class Seq2Seq(nn.Module):
         self.encoder = encoder
         self.decoder = decoder
 
-    def forward(self, src, trg, teacher_forcing_ratio=0.5):
+    def forward(self, src, trg):
+        try: 
+            max_len = trg.size(0)
+            teacher_forcing_ratio = 0.5
+        except:
+            max_len = trg
+            teacher_forcing_ratio = 1
+  
         batch_size = src.size(1)
-        max_len = trg.size(0)
         vocab_size = self.decoder.output_size
-        outputs = Variable(torch.zeros(max_len, batch_size, vocab_size)).cuda()
+        outputs = Variable(torch.zeros(max_len, batch_size, vocab_size)).cuda() # T*B*V
 
-        encoder_output, hidden = self.encoder(src)
+        encoder_output, hidden = self.encoder(src) # T*B*H
         hidden = hidden[:self.decoder.n_layers]
-        output = Variable(trg.data[0, :])  # sos
+        try:
+            output = Variable(trg.data[0, :])  # sos # B
+        except:
+            output = Variable(torch.tensor(np.array([2]))).cuda() # DE.vocab.stoi['<sos>']
+        decoded_idx = [2]
         for t in range(1, max_len):
             output, hidden, attn_weights = self.decoder(
                     output, hidden, encoder_output)
             outputs[t] = output
-            is_teacher = random.random() < teacher_forcing_ratio
+            _, topi = output.data.topk(1)
+            decoded_idx.append(topi.item())
+            if topi.item() == 3: # DE.vocab.stoi['<eos>']
+                break
+            
+            if teacher_forcing_ratio==1:
+                is_teacher = False
+            else:
+                is_teacher = random.random() < teacher_forcing_ratio
             top1 = output.data.max(1)[1]
             output = Variable(trg.data[t] if is_teacher else top1).cuda()
-        return outputs
+        return outputs, decoded_idx
