@@ -101,9 +101,7 @@ ENV/
 .mypy_cache/
 
 # training
-.data
 .save
-.samples
-.tmp
+
 
 .vscode/

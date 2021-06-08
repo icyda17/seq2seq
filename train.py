@@ -36,8 +36,8 @@ def evaluate(model, val_iter, vocab_size, DE, EN):
             trg = trg.data.cuda()
             output, _ = model(src, trg, teacher_forcing_ratio=0.0)
             loss = F.nll_loss(output[1:].view(-1, vocab_size),
-                                   trg[1:].contiguous().view(-1),
-                                   ignore_index=pad)
+                              trg[1:].contiguous().view(-1),
+                              ignore_index=pad)
             total_loss += loss.data.item()
         return total_loss / len(val_iter)
 
@@ -53,8 +53,8 @@ def train(e, model, optimizer, train_iter, vocab_size, grad_clip, DE, EN):
         optimizer.zero_grad()
         output, _ = model(src, trg)
         loss = F.nll_loss(output[1:].view(-1, vocab_size),
-                               trg[1:].contiguous().view(-1),
-                               ignore_index=pad)
+                          trg[1:].contiguous().view(-1),
+                          ignore_index=pad)
         loss.backward()
         clip_grad_norm_(model.parameters(), grad_clip)
         optimizer.step()
@@ -84,19 +84,19 @@ def main():
     joblib.dump(DE.__getstate__(), '../data/data/DE.state')
     joblib.dump(EN.__getstate__(), '../data/data/EN.state')
     print("[!] Instantiating models...")
-    encoder=Encoder(de_size, embed_size, hidden_size,
+    encoder = Encoder(de_size, embed_size, hidden_size,
                       n_layers=2, dropout=0.5)
-    decoder=Decoder(embed_size, hidden_size, en_size,
+    decoder = Decoder(embed_size, hidden_size, en_size,
                       n_layers=1, dropout=0.5)
-    seq2seq=Seq2Seq(encoder, decoder).cuda()
-    optimizer=optim.Adam(seq2seq.parameters(), lr=args.lr)
+    seq2seq = Seq2Seq(encoder, decoder).cuda()
+    optimizer = optim.Adam(seq2seq.parameters(), lr=args.lr)
     print(seq2seq)
 
-    best_val_loss=None
+    best_val_loss = None
     for e in range(1, args.epochs+1):
         train(e, seq2seq, optimizer, train_iter,
               en_size, args.grad_clip, DE, EN)
-        val_loss=evaluate(seq2seq, val_iter, en_size, DE, EN)
+        val_loss = evaluate(seq2seq, val_iter, en_size, DE, EN)
         print("[Epoch:%d] val_loss:%5.3f | val_pp:%5.2fS"
               % (e, val_loss, math.exp(val_loss)))
 
@@ -106,8 +106,8 @@ def main():
             if not os.path.isdir(".save"):
                 os.makedirs(".save")
             torch.save(seq2seq.state_dict(), './.save/seq2seq_%d.pt' % (e))
-            best_val_loss=val_loss
-    test_loss=evaluate(seq2seq, test_iter, en_size, DE, EN)
+            best_val_loss = val_loss
+    test_loss = evaluate(seq2seq, test_iter, en_size, DE, EN)
     print("[TEST] loss:%5.2f" % test_loss)
 
 
