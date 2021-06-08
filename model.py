@@ -93,34 +93,36 @@ class Seq2Seq(nn.Module):
         self.decoder = decoder
 
     def forward(self, src, trg):
-        try: 
+        try:
             max_len = trg.size(0)
             teacher_forcing_ratio = 0.5
         except:
             max_len = trg
             teacher_forcing_ratio = 1
-  
+
         batch_size = src.size(1)
         vocab_size = self.decoder.output_size
-        outputs = Variable(torch.zeros(max_len, batch_size, vocab_size)).cuda() # T*B*V
+        outputs = Variable(torch.zeros(
+            max_len, batch_size, vocab_size)).cuda()  # T*B*V
 
-        encoder_output, hidden = self.encoder(src) # T*B*H
+        encoder_output, hidden = self.encoder(src)  # T*B*H
         hidden = hidden[:self.decoder.n_layers]
         try:
             output = Variable(trg.data[0, :])  # sos # B
         except:
-            output = Variable(torch.tensor(np.array([2]))).cuda() # DE.vocab.stoi['<sos>']
+            # DE.vocab.stoi['<sos>']
+            output = Variable(torch.tensor(np.array([2]))).cuda()
         decoded_idx = [2]
         for t in range(1, max_len):
             output, hidden, attn_weights = self.decoder(
-                    output, hidden, encoder_output)
+                output, hidden, encoder_output)
             outputs[t] = output
             _, topi = output.data.topk(1)
             decoded_idx.append(topi.item())
-            if topi.item() == 3: # DE.vocab.stoi['<eos>']
+            if topi.item() == 3:  # DE.vocab.stoi['<eos>']
                 break
-            
-            if teacher_forcing_ratio==1:
+
+            if teacher_forcing_ratio == 1:
                 is_teacher = False
             else:
                 is_teacher = random.random() < teacher_forcing_ratio
