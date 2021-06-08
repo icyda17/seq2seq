@@ -29,7 +29,7 @@ This implementation relies on [torchtext](https://github.com/pytorch/text) to mi
 
 download tokenizers by doing so:
 ```
-python -m spacy download de
+python -m spacy download de_core_news_sm
 python -m spacy download en
 ```
 
