@@ -34,7 +34,7 @@ def evaluate(model, val_iter, vocab_size, DE, EN):
             trg, len_trg = batch.trg
             src = src.data.cuda()
             trg = trg.data.cuda()
-            output, _ = model(src, trg, teacher_forcing_ratio=0.0)
+            output = model(src, trg)
             loss = F.nll_loss(output[1:].view(-1, vocab_size),
                               trg[1:].contiguous().view(-1),
                               ignore_index=pad)
@@ -51,7 +51,7 @@ def train(e, model, optimizer, train_iter, vocab_size, grad_clip, DE, EN):
         trg, len_trg = batch.trg
         src, trg = src.cuda(), trg.cuda()
         optimizer.zero_grad()
-        output, _ = model(src, trg)
+        output = model(src, trg)
         loss = F.nll_loss(output[1:].view(-1, vocab_size),
                           trg[1:].contiguous().view(-1),
                           ignore_index=pad)
@@ -103,9 +103,12 @@ def main():
         # Save the model if the validation loss is the best we've seen so far.
         if not best_val_loss or val_loss < best_val_loss:
             print("[!] saving model...")
-            if not os.path.isdir(".save"):
-                os.makedirs(".save")
-            torch.save(seq2seq.state_dict(), './.save/seq2seq_%d.pt' % (e))
+            if not os.path.isdir("save"):
+                os.makedirs("save")
+            torch.save({'model_state_dict': seq2seq.state_dict(),
+                        'epoch': e,
+                        'loss': '%5.3f' %val_loss},
+                        './save/seq2seq.pt')
             best_val_loss = val_loss
     test_loss = evaluate(seq2seq, test_iter, en_size, DE, EN)
     print("[TEST] loss:%5.2f" % test_loss)

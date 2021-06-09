@@ -112,15 +112,11 @@ class Seq2Seq(nn.Module):
         except:
             # DE.vocab.stoi['<sos>']
             output = Variable(torch.tensor(np.array([2]))).cuda()
-        decoded_idx = [2]
+
         for t in range(1, max_len):
             output, hidden, attn_weights = self.decoder(
                 output, hidden, encoder_output)
             outputs[t] = output
-            _, topi = output.data.topk(1)
-            decoded_idx.append(topi.item())
-            if topi.item() == 3:  # DE.vocab.stoi['<eos>']
-                break
 
             if teacher_forcing_ratio == 1:
                 is_teacher = False
@@ -128,4 +124,4 @@ class Seq2Seq(nn.Module):
                 is_teacher = random.random() < teacher_forcing_ratio
             top1 = output.data.max(1)[1]
             output = Variable(trg.data[t] if is_teacher else top1).cuda()
-        return outputs, decoded_idx
+        return outputs
