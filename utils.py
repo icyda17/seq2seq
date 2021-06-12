@@ -3,17 +3,18 @@ import spacy
 from torchtext.legacy.data import Field, BucketIterator
 from torchtext.legacy.datasets import Multi30k
 
-
 url = re.compile('(<url>.*</url>)')
 spacy_de = spacy.load('de_core_news_sm')
 spacy_en = spacy.load('en_core_web_sm')
 
 
 def tokenize_de(text):
+    global spacy_de
     return [tok.text for tok in spacy_de.tokenizer(url.sub('@URL@', text))]
 
 
 def tokenize_en(text):
+    global spacy_en
     return [tok.text for tok in spacy_en.tokenizer(url.sub('@URL@', text))]
 
 

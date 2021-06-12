@@ -24,7 +24,7 @@ def parse_arguments():
     return p.parse_args()
 
 
-def evaluate(model, val_iter, vocab_size, DE, EN):
+def evaluate(model, val_iter, vocab_size, DE, EN, device):
     with torch.no_grad():
         model.eval()
         pad = EN.vocab.stoi['<pad>']
@@ -32,8 +32,8 @@ def evaluate(model, val_iter, vocab_size, DE, EN):
         for b, batch in enumerate(val_iter):
             src, len_src = batch.src
             trg, len_trg = batch.trg
-            src = src.data.cuda()
-            trg = trg.data.cuda()
+            src = src.data.to(device)
+            trg = trg.data.to(device)
             output = model(src, trg)
             loss = F.nll_loss(output[1:].view(-1, vocab_size),
                               trg[1:].contiguous().view(-1),
@@ -42,14 +42,14 @@ def evaluate(model, val_iter, vocab_size, DE, EN):
         return total_loss / len(val_iter)
 
 
-def train(e, model, optimizer, train_iter, vocab_size, grad_clip, DE, EN):
+def train(e, model, optimizer, train_iter, vocab_size, grad_clip, DE, EN, device):
     model.train()
     total_loss = 0
     pad = EN.vocab.stoi['<pad>']
     for b, batch in enumerate(train_iter):
         src, len_src = batch.src
         trg, len_trg = batch.trg
-        src, trg = src.cuda(), trg.cuda()
+        src, trg = src.to(device), trg.to(device)
         optimizer.zero_grad()
         output = model(src, trg)
         loss = F.nll_loss(output[1:].view(-1, vocab_size),
@@ -71,7 +71,7 @@ def main():
     args = parse_arguments()
     hidden_size = 512
     embed_size = 256
-    assert torch.cuda.is_available()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     print("[!] preparing dataset...")
     train_iter, val_iter, test_iter, DE, EN = load_dataset(args.batch_size)
@@ -81,22 +81,22 @@ def main():
              len(test_iter), len(test_iter.dataset)))
     print("[DE_vocab]:%d [en_vocab]:%d" % (de_size, en_size))
     print("[Saving] Vocabulary...")
-    joblib.dump(DE.__getstate__(), '../data/data/DE.state')
-    joblib.dump(EN.__getstate__(), '../data/data/EN.state')
+    joblib.dump(DE.__getstate__(), 'data/DE.state')
+    joblib.dump(EN.__getstate__(), 'data/EN.state')
     print("[!] Instantiating models...")
     encoder = Encoder(de_size, embed_size, hidden_size,
                       n_layers=2, dropout=0.5)
     decoder = Decoder(embed_size, hidden_size, en_size,
                       n_layers=1, dropout=0.5)
-    seq2seq = Seq2Seq(encoder, decoder).cuda()
+    seq2seq = Seq2Seq(encoder, decoder, device).to(device)
     optimizer = optim.Adam(seq2seq.parameters(), lr=args.lr)
     print(seq2seq)
 
     best_val_loss = None
     for e in range(1, args.epochs+1):
         train(e, seq2seq, optimizer, train_iter,
-              en_size, args.grad_clip, DE, EN)
-        val_loss = evaluate(seq2seq, val_iter, en_size, DE, EN)
+              en_size, args.grad_clip, DE, EN, device)
+        val_loss = evaluate(seq2seq, val_iter, en_size, DE, EN, device)
         print("[Epoch:%d] val_loss:%5.3f | val_pp:%5.2fS"
               % (e, val_loss, math.exp(val_loss)))
 
@@ -107,8 +107,8 @@ def main():
                 os.makedirs("save")
             torch.save({'model_state_dict': seq2seq.state_dict(),
                         'epoch': e,
-                        'loss': '%5.3f' %val_loss},
-                        './save/seq2seq.pt')
+                        'loss': '%5.3f' % val_loss},
+                       './save/seq2seq.pt')
             best_val_loss = val_loss
     test_loss = evaluate(seq2seq, test_iter, en_size, DE, EN)
     print("[TEST] loss:%5.2f" % test_loss)

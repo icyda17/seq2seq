@@ -19,18 +19,16 @@ This implementation relies on [torchtext](https://github.com/pytorch/text) to mi
 
 ## Requirements
 
-* GPU & CUDA
 * Python3
 * PyTorch
 * torchtext
 * Spacy
 * numpy
-* Visdom (optional)
 
 download tokenizers by doing so:
 ```
 python -m spacy download de_core_news_sm
-python -m spacy download en
+python -m spacy download en_core_web_sm
 ```
 
 

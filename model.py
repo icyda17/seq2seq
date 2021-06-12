@@ -87,41 +87,39 @@ class Decoder(nn.Module):
 
 
 class Seq2Seq(nn.Module):
-    def __init__(self, encoder, decoder):
+    def __init__(self, encoder, decoder, device):
         super(Seq2Seq, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
+        self.device = device
 
     def forward(self, src, trg):
-        try:
+        try: 
             max_len = trg.size(0)
             teacher_forcing_ratio = 0.5
         except:
             max_len = trg
             teacher_forcing_ratio = 1
-
+  
         batch_size = src.size(1)
         vocab_size = self.decoder.output_size
-        outputs = Variable(torch.zeros(
-            max_len, batch_size, vocab_size)).cuda()  # T*B*V
+        outputs = Variable(torch.zeros(max_len, batch_size, vocab_size)).to(self.device) # T*B*V
 
-        encoder_output, hidden = self.encoder(src)  # T*B*H
+        encoder_output, hidden = self.encoder(src) # T*B*H
         hidden = hidden[:self.decoder.n_layers]
         try:
             output = Variable(trg.data[0, :])  # sos # B
         except:
-            # DE.vocab.stoi['<sos>']
-            output = Variable(torch.tensor(np.array([2]))).cuda()
-
+            output = Variable(torch.tensor(np.array([2]))).to(self.device) # DE.vocab.stoi['<sos>']
+        
         for t in range(1, max_len):
             output, hidden, attn_weights = self.decoder(
-                output, hidden, encoder_output)
+                    output, hidden, encoder_output)
             outputs[t] = output
-
-            if teacher_forcing_ratio == 1:
+            if teacher_forcing_ratio==1:
                 is_teacher = False
             else:
                 is_teacher = random.random() < teacher_forcing_ratio
             top1 = output.data.max(1)[1]
-            output = Variable(trg.data[t] if is_teacher else top1).cuda()
+            output = Variable(trg.data[t] if is_teacher else top1).to(self.device)
         return outputs
